@@ -69,7 +69,7 @@ def getInputFile():
 def getOutputCSV():
     # Emulate system arguments if not running the library from the terminal
     if type_of_script() != 'terminal':
-        print("Emulating output filename as dataset.csv")
+        print("Emulating output filename as output.csv")
         return "output.csv"
     return str(outfile.absolute()) 
 
