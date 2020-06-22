@@ -12,7 +12,7 @@ python3 setup.py install
 
 To build a new version for pypi (only we do that):
 
-<code>
+```
 python3 -m pip install --user --upgrade setuptools wheel
 
 python3 -m pip install --user --upgrade twine
@@ -20,5 +20,6 @@ python3 -m pip install --user --upgrade twine
 python3 setup.py sdist bdist_wheel
 
 python3 -m twine upload --repository pypi dist/*
-</code>
+```
+
 Use the saved credentials, and remember the username is __token__
