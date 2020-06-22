@@ -26,4 +26,4 @@ python3 setup.py sdist bdist_wheel
 python3 -m twine upload --repository pypi dist/*
 ```
 
-Use the saved credentials, and remember the username is __token__
+Use the saved credentials, and remember the username is \_\_token\_\_
