@@ -4,11 +4,15 @@ This package includes helper scripts for interfacing your machine learning code 
 
 To install from pypi:
 
+```
 pip install gravityai
+```
 
 To install from source:
 
+```
 python3 setup.py install
+```
 
 To build a new version for pypi (only we do that):
 
