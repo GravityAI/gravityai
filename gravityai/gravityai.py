@@ -41,9 +41,11 @@ if type_of_script() == 'terminal':
     
     # Validate that json input file contains valid data format, if the input was json
     if str(datafile).endswith(".json"):
-        if not valid_json(str(datafile)):
-            sys.stderr.write("JSON input is not in a valid format. Please check the format of the input file.")
-            sys.exit(2)
+        with open(str(datafile), 'r') as file:
+            json_text = file.read().replace('\n', '')
+            if not valid_json(json_text):
+                sys.stderr.write("JSON input is not in a valid format. Please check the format of the input file.")
+                sys.exit(2)
         
     # Validate that output file was specified
     if (len(sys.argv) <= 2):
