@@ -8,7 +8,7 @@ with open("requirements.txt", "r") as rqf:
 
 setuptools.setup(
     name="gravityai",
-    version="0.0.7",
+    version="0.0.8",
     author="Jon Huss",
     author_email="jon@gravity-ai.com",
     description="The gravity-ai.com helper package",
