@@ -30,7 +30,9 @@ def type_of_script():
 def valid_json(myjson):
     try:
         json_object = json.loads(myjson)
-    except ValueError as e:
+        if (not json_object):
+            return False
+    except ValueError:
         return False
     return True
 
@@ -120,7 +122,7 @@ def tryParseJsonRequest(jsonMessage):
     try:
         json_object = json.loads(jsonMessage)
         return True, json_object
-    except ValueError as e:
+    except ValueError:
         return False, {}
     return True
 
@@ -200,14 +202,15 @@ def wait_for_requests():
     global request_handler
     if (request_handler is None):
         sys.stderr.write(
-            "Request handler has not been registered.  Please call register_request_handler with a function that accepts two arguments. Please specify a file.")
+            "Request handler has not been registered.  Please call register_request_handler with a function that accepts two arguments (inputpath, outputPath).")
         sys.exit(2)
         return
 
     if (not callable(request_handler)):
-        websocket.send(json.dumps(
-            {"error": "Inference Handler is not callable", "requestId": data.requestId}))
+        sys.stderr.write(
+            "Request handler has been registered, but is not callable.  Please call register_request_handler with a function that accepts two arguments (inputpath, outputPath).")
+        sys.exit(2)
         return
     asyncio.get_event_loop().run_until_complete(
-        websockets.serve(wsHandler, 'localhost', 8765))
+        websockets.serve(wsHandler, 'localhost', 4500))
     asyncio.get_event_loop().run_forever()
