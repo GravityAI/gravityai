@@ -1,4 +1,5 @@
 build/
 dist/
 gravityai.egg-info/
-
+.venv/
+.vscode/
