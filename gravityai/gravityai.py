@@ -142,13 +142,18 @@ async def on_request(websocket, data):
             {"error": "Inference Handler is not set", "requestId": data.requestId}))
         return
 
-    if (not callable(request_handler)):
+    if (not callable(request_handler) and not asyncio.iscoroutinefunction(request_handler)):
         websocket.send(json.dumps(
             {"error": "Inference Handler is not callable", "requestId": data.requestId}))
         return
 
     try:
-        err = request_handler(data.inputFile, data.outputFile)
+        err = None
+        if(asyncio.iscoroutinefunction(request_handler)):
+            err = await request_handler(data.inputFile, data.outputFile)
+        else:
+            err = request_handler(data.inputFile, data.outputFile)
+
         if (not err is None and err):
             websocket.send(json.dumps(
                 {"error": "error returned during processing", "requestId": data.requestId, "errorData": err}))
