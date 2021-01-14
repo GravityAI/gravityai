@@ -3,3 +3,4 @@ dist/
 gravityai.egg-info/
 .venv/
 .vscode/
+creds.txt
