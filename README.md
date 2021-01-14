@@ -14,6 +14,32 @@ To install from source:
 python3 setup.py install
 ```
 
+## Example Implementation Code
+
+```
+from gravityai import gravityai as grav
+
+# the following function is a callback (defined by you), that may be
+# async or synchronous and that may be called multiple times, to
+# transform input data against an algorithm or model (or whatever you want)
+# If an error is experienced, return an error string message, or throw an exception.
+def process(dataPath, outPath):
+    # TODO:
+    # Read data in from dataPath
+    # Transform Data via model
+    # Write data out to outPath
+    # Return None if everything went ok.
+    # return an error string if there was a problem.
+
+
+# TODO Initialize models, etc. before calling wait_for_requests.
+
+grav.wait_for_requests(process)
+
+```
+
+## Building a new Version
+
 To build a new version for pypi (only we do that):
 
 ```

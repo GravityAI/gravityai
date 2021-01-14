@@ -3,8 +3,10 @@ import sys
 import os
 import json
 from pathlib import Path
+import argparse
 import asyncio
 import websockets
+from datetime import datetime
 
 warnings.filterwarnings("ignore")
 
@@ -13,7 +15,7 @@ warnings.filterwarnings("ignore")
 # This function checks if you are running the library from jupyter or not
 
 
-def type_of_script():
+def _type_of_script():
     try:
         # pylint: disable=undefined-variable
         ipy_str = str(type(get_ipython()))
@@ -27,7 +29,7 @@ def type_of_script():
 # Source: https://stackoverflow.com/questions/5508509/how-do-i-check-if-a-string-is-valid-json-in-python
 
 
-def valid_json(myjson):
+def _valid_json(myjson):
     try:
         json_object = json.loads(myjson)
         if (not json_object):
@@ -37,52 +39,98 @@ def valid_json(myjson):
     return True
 
 
-datafile = ""
-outfile = ""
-if type_of_script() == 'terminal':
-    # Validate that input file was specified
-    if (len(sys.argv) <= 1):
-        sys.stderr.write(
-            "No input file specified on command line. Please specify a file.")
-        sys.exit(2)
-    datafile = Path(sys.argv[1])
+_datafile = ""
+_outfile = ""
+_port = None
+_is_gai = False
+_is_debug = False
 
+
+def _run_command(args):
+    global _datafile
+    global _outfile
+    _datafile = Path(args.input_path)
     # Validate that input file exists
-    if (not datafile.is_file()):
+    if (not _datafile.is_file()):
         sys.stderr.write("Input file not found. Please create an input file.")
         sys.exit(2)
 
     # Validate that json input file contains valid data format, if the input was json
-    if str(datafile).endswith(".json"):
-        with open(str(datafile), 'r') as file:
+    if str(_datafile).endswith(".json"):
+        with open(str(_datafile), 'r') as file:
             json_text = file.read().replace('\n', '')
-            if not valid_json(json_text):
+            if not _valid_json(json_text):
                 sys.stderr.write(
                     "JSON input is not in a valid format. Please check the format of the input file.")
                 sys.exit(2)
 
     # Validate that output file was specified
-    if (len(sys.argv) <= 2):
+    if (len(args.output_path) <= 2):
         sys.stderr.write(
             "No output file specified on command line. Please specify a file.")
-        sys.exit(3)
-    outfile = Path(sys.argv[2])
+        sys.exit(2)
+    _outfile = Path(args.output_path)
+
+
+def _serve_command(args):
+    global _port
+    global _is_gai
+    global _is_debug
+    _port = args.port
+    _is_gai = args.gai
+    _is_debug = args.debug
+
+    if (_port is None or _port < 1 or _port > 65535):
+        sys.stderr.write(
+            "Invalid port number specified. Please select a port number in the range 0-65535")
+        sys.exit(2)
+    if(not _is_gai):
+        print("Serving on port " + str(_port))
+
+
+if _type_of_script() == 'terminal':
+
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers(
+        title='subcommands', help='commands to choose from', required=True, dest='subcommand')
+    parser_run = subparsers.add_parser(
+        'run', help='run this model once from the command line')
+    parser_run.add_argument("input_path", help='Path to input data file')
+    parser_run.add_argument("output_path", help='Path to output result file')
+    parser_run.set_defaults(func=_run_command)
+
+    parser_serve = subparsers.add_parser(
+        'serve', help='run this model as a websocket service')
+    parser_serve.add_argument("-p", '--port',  nargs='?',
+                              default=49200, help='tcp port to serve on', type=int)
+    parser_serve.add_argument('--gai', action="store_true",
+                              help='Enable gravity AI specific status messages and idle timeout')
+    parser_serve.add_argument('--debug', action="store_true",
+                              help='Enable debugging to log file "gai_debug.log"')
+    parser_serve.set_defaults(func=_serve_command)
+
+    if (len(sys.argv) <= 1):
+        parser.parse_args(['--help'])
+        sys.exit(2)
+
+    args = parser.parse_args()
+    args.func(args)
 
 
 def getInputCSV():
     # Emulate system arguments if not running the library from the terminal
-    if type_of_script() != 'terminal':
+    if _type_of_script() != 'terminal':
         print("Emulating input filename as dataset.csv")
         return "dataset.csv"
-    return str(datafile.resolve())
+    return str(_datafile.resolve())
 
 
 def getInputJSON():
     # Emulate system arguments if not running the library from the terminal
-    if type_of_script() != 'terminal':
+    if _type_of_script() != 'terminal':
         print("Emulating input filename as data.json")
         return "data.json"
-    return str(datafile.resolve())
+    return str(_datafile.resolve())
 
 
 def getInputFile():
@@ -91,18 +139,18 @@ def getInputFile():
 
 def getOutputCSV():
     # Emulate system arguments if not running the library from the terminal
-    if type_of_script() != 'terminal':
+    if _type_of_script() != 'terminal':
         print("Emulating output filename as output.csv")
         return "output.csv"
-    return str(outfile.absolute())
+    return str(_outfile.absolute())
 
 
 def getOutputJSON():
     # Emulate system arguments if not running the library from the terminal
-    if type_of_script() != 'terminal':
+    if _type_of_script() != 'terminal':
         print("Emulating output filename as output.json")
         return "output.json"
-    return str(outfile.absolute())
+    return str(_outfile.absolute())
 
 
 def getOutputFile():
@@ -118,104 +166,239 @@ def batch(iterable, n=1):
         yield iterable[ndx:min(ndx + n, l)]
 
 
-def tryParseJsonRequest(jsonMessage):
+def _tryParseJsonRequest(jsonMessage):
     try:
         json_object = json.loads(jsonMessage)
         return True, json_object
-    except ValueError:
+    except Exception:
         return False, {}
     return True
 
 
-request_handler = None
+_request_handler = None
 
 
-def register_request_handler(handler):
-    global request_handler
-    request_handler = handler
+def _check_request_handler():
+    global _request_handler
+    if (_request_handler is None):
+        return False
+
+    if (not callable(_request_handler) and not asyncio.iscoroutinefunction(_request_handler)):
+        return False
+    return True
 
 
-async def on_request(websocket, data):
-    global request_handler
-    if (request_handler is None):
-        websocket.send(json.dumps(
-            {"error": "Inference Handler is not set", "requestId": data.requestId}))
-        return
+def _print_gravity_message(message):
+    global _is_gai
+    if _is_gai:
+        print("[gravityAI]: " + message, flush=True)
+    _print_debug_message(message)
 
-    if (not callable(request_handler) and not asyncio.iscoroutinefunction(request_handler)):
-        websocket.send(json.dumps(
-            {"error": "Inference Handler is not callable", "requestId": data.requestId}))
-        return
+
+def _print_debug_message(message):
+    global _is_debug
+    if _is_debug:
+        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        with open("gai_debug.log", "a") as file_object:
+            file_object.write(f"[debug {timestamp}]: {message}\n")
+
+
+async def _send_error_message(websocket, reqId, message):
+    await websocket.send(json.dumps({"status": "error", "error": message, "requestId": reqId}))
+
+
+async def _send_error_bad_message(websocket, error, message):
+    await websocket.send(json.dumps({"status": "error", "error": error, "request": message}))
+
+
+async def _send_accepted_message(websocket, reqId):
+    await websocket.send(json.dumps({"status": "pending", "requestId": reqId}))
+
+
+async def _send_finished_message(websocket, reqId):
+    await websocket.send(json.dumps({"status": "complete", "requestId": reqId}))
+
+
+def _normalize_path_string(path):
+    f = Path(path)
+    if (f.is_file()):
+        return f.resolve()
+    return f.absolute()
+
+
+async def _on_request(inputFile, outputFile):
+    global _request_handler
+    if (not _check_request_handler()):
+        return False, "Request Handler is not callable"
 
     try:
+        # Validate that input file exists
+        inFile = Path(inputFile)
+        if (not inFile.is_file()):
+            return False, "Input file not found"
+        _print_debug_message("Handling Request")
         err = None
-        if(asyncio.iscoroutinefunction(request_handler)):
-            err = await request_handler(data.inputFile, data.outputFile)
+        if(asyncio.iscoroutinefunction(_request_handler)):
+            err = await _request_handler(inputFile, outputFile)
         else:
-            err = request_handler(data.inputFile, data.outputFile)
+            err = _request_handler(_normalize_path_string(
+                inputFile), _normalize_path_string(outputFile))
 
         if (not err is None and err):
-            websocket.send(json.dumps(
-                {"error": "error returned during processing", "requestId": data.requestId, "errorData": err}))
-            return
+            _print_debug_message(f"Request Error: {err}")
+            return False, f"Error returned during processing: {err}"
 
-        datafile = Path(data.outputFile)
+        _print_debug_message(f"Request Finished")
+        outFile = Path(outputFile)
 
         # Validate that output file exists
-        if (not datafile.is_file()):
-            websocket.send(json.dumps(
-                {"error": "Output file not generated during processing", "requestId": data.requestId, "errorData": data.outputFile}))
+        if (not outFile.is_file()):
+            return False, "Output file not generated during processing"
 
-    except ValueError as e:
-        websocket.send(json.dumps(
-            {"error": "Exception generated during processing", "requestId": data.requestId, "errorData": e}))
+    except Exception as e:
+        return False, "Exception generated during processing: " + str(e)
+    except BaseException as e:
+        return False, "Exception generated during processing: " + str(e)
+    except:
+        return False, "Unknown Exception generated during processing"
+    return True, None
 
-    return
+
+def _is_dictionary_string_valid(data, key):
+    return (key in data and data[key] and isinstance(data[key], str))
 
 
-async def wsHandler(websocket, path):
-    async for message in websocket:
-        isOk, data = tryParseJsonRequest(message)
+_connections = set()
+
+
+async def _remove_when_closed(websocket):
+    _print_debug_message("Awaiting Close")
+    await websocket.wait_closed()
+    _print_debug_message("Awaiting Close Complete")
+    if(websocket in _connections):
+        _connections.remove(websocket)
+
+
+async def _wsHandler(websocket, path):
+    global _connections
+    _print_gravity_message("Websocket Connection")
+    _connections.add(websocket)
+    asyncio.ensure_future(_remove_when_closed(websocket))
+    try:
+        async for message in websocket:
+            isOk, data = _tryParseJsonRequest(message)
+            _print_debug_message(f"Message Received: {message}")
+            if (not isOk):
+                await _send_error_bad_message(websocket, "Invalid Request: Json parse error", message)
+                continue
+
+            if (not isinstance(data, dict)):
+                await _send_error_bad_message(websocket, "Invalid Request: root json object is not a dictionary", message)
+                continue
+
+            if (not _is_dictionary_string_valid(data, 'requestId')):
+                await _send_error_bad_message(websocket, "Request does not contain a valid requestId", message)
+                continue
+
+            reqId = data['requestId']
+            if (not _is_dictionary_string_valid(data, 'inputFile')):
+                await _send_error_message(websocket, reqId, "Request does not contain inputFile")
+                continue
+
+            if (not _is_dictionary_string_valid(data, 'outputFile')):
+                await _send_error_message(websocket, reqId, "Request does not contain outputFile")
+                continue
+
+            await _send_accepted_message(websocket, reqId)
+
+            try:
+                isOk, error = await _on_request(data['inputFile'], data['outputFile'])
+            except:
+                await _send_error_message(websocket, reqId, "Unhandle exception during processing")
+                continue
+
+            if (not isOk):
+                await _send_error_message(websocket, reqId, error)
+                continue
+
+            await _send_finished_message(websocket, reqId)
+    except Exception as e:
+        _print_gravity_message(f"Exception in Websocket: {e}")
+    finally:
+        _print_gravity_message("Websocket Disconnected")
+        if(websocket in _connections):
+            _connections.remove(websocket)
+
+
+async def _idle_timer():
+    global _is_gai
+    global _connections
+    if (not _is_gai):
+        return
+
+    idle_count = 0
+    _print_gravity_message("Idle Timer: started")
+    while(True):
+        await asyncio.sleep(5)
+        idle_count += 1
+
+        if (_connections):
+            count = sum(1 for c in _connections if c.open)
+            if (count > 0):
+                idle_count = 0
+                _print_debug_message(
+                    f"Idle Timer: Server has open connections: {count}")
+                continue
+
+        _print_debug_message("Idle Timer: tick " + str(idle_count))
+
+        if (idle_count >= 6):  # 30 seconds or so.
+            _print_debug_message("Idle Timer: Timeout ")
+            sys.stderr.write(
+                "Idle Timeout")
+            sys.exit(2)
+
+
+def handle_loop_exception(loop, context):
+    # context["message"] will always be there; but context["exception"] may not
+    msg = context.get("exception", context["message"])
+    _print_gravity_message(f"Unhandled Loop exception: {msg}")
+    sys.stderr.write(f"Unhandled Loop Exception: {msg}")
+    sys.exit(2)
+
+
+def wait_for_requests(handler):
+    global _request_handler
+    global _port
+    _request_handler = handler
+
+    if (not _check_request_handler):
+        sys.stderr.write(
+            "Handler is invalid. Expected a function that accepts two arguments (inputpath, outputPath).")
+        sys.exit(2)
+        return
+
+    if (not _port is None):
+        _print_gravity_message("Starting server")
+        loop = asyncio.get_event_loop()
+        loop.set_exception_handler(handle_loop_exception)
+        try:
+            loop.run_until_complete(websockets.serve(
+                _wsHandler, 'localhost', _port))
+        except Exception as e:
+            sys.stderr.write("Failed to start server: " + str(e))
+            _print_gravity_message("Bad Port")
+            sys.exit(2)
+
+        _print_gravity_message("Running on port " + str(_port))
+
+        loop.run_until_complete(_idle_timer())
+        loop.run_forever()
+
+    else:
+        isOk, error = asyncio.get_event_loop().run_until_complete(
+            _on_request(getInputFile(), getOutputFile()))
+
         if (not isOk):
-            websocket.send(json.dumps(
-                {"error": "Invalid Request", "errorData": message}))
-            continue
-        if (not hasattr(data, "requestId") or not isinstance(data.requestId, str) or not data.requestId):
-            websocket.send(json.dumps(
-                {"error": "Request does not contain requestId", "errorData": message}))
-            continue
-        if (not hasattr(data, "inputFile") or not isinstance(data.inputFile, str) or not data.inputFile):
-            websocket.send(json.dumps(
-                {"error": "Request does not contain inputFile", "requestId": data.requestId, "errorData": message}))
-            continue
-        if (not hasattr(data, "outputFile") or not isinstance(data.outputFile, str) or not data.outputFile):
-            websocket.send(json.dumps(
-                {"error": "Request does not contain outputFile", "requestId": data.requestId, "errorData": message}))
-            continue
-        datafile = Path(data.inputFile)
-
-        # Validate that input file exists
-        if (not datafile.is_file()):
-            websocket.send(json.dumps(
-                {"error": "Input file not found", "requestId": data.requestId, "errorData": data.inputFile}))
-            continue
-
-        await on_request(websocket, data)
-
-
-def wait_for_requests():
-    global request_handler
-    if (request_handler is None):
-        sys.stderr.write(
-            "Request handler has not been registered.  Please call register_request_handler with a function that accepts two arguments (inputpath, outputPath).")
-        sys.exit(2)
-        return
-
-    if (not callable(request_handler)):
-        sys.stderr.write(
-            "Request handler has been registered, but is not callable.  Please call register_request_handler with a function that accepts two arguments (inputpath, outputPath).")
-        sys.exit(2)
-        return
-    asyncio.get_event_loop().run_until_complete(
-        websockets.serve(wsHandler, 'localhost', 4500))
-    asyncio.get_event_loop().run_forever()
+            sys.stderr.write(error)
+            sys.exit(2)
