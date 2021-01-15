@@ -384,7 +384,7 @@ def wait_for_requests(handler):
         loop.set_exception_handler(handle_loop_exception)
         try:
             loop.run_until_complete(websockets.serve(
-                _wsHandler, 'localhost', _port))
+                _wsHandler, '127.0.0.1', _port))
         except Exception as e:
             sys.stderr.write("Failed to start server: " + str(e))
             _print_gravity_message("Bad Port")

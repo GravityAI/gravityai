@@ -1,6 +1,6 @@
-# <a href="https://gravity-ai.com">Gravity-ai.com<a>
+# <a href="https://gravity-ai.com">Gravity-ai.com</a>
 
-This package includes helper scripts for interfacing your machine learning code with the Gravity-ai.com containerization code.
+This package includes helper scripts for interfacing your machine learning code with the <a href="https://gravity-ai.com">Gravity-ai.com</a> containerization code.
 
 To install from pypi:
 
