@@ -23,7 +23,7 @@ from gravityai import gravityai as grav
 # async or synchronous and that may be called multiple times, to
 # transform input data against an algorithm or model (or whatever you want)
 # If an error is experienced, return an error string message, or throw an exception.
-def process(dataPath, outPath):
+def process_data(dataPath, outPath):
     # TODO:
     # Read data in from dataPath
     # Transform Data via model
@@ -34,7 +34,7 @@ def process(dataPath, outPath):
 
 # TODO Initialize models, etc. before calling wait_for_requests.
 
-grav.wait_for_requests(process)
+grav.wait_for_requests(process_data)
 
 ```
 
