@@ -239,10 +239,10 @@ async def _on_request(inputFile, outputFile):
         _print_debug_message("Handling Request")
         err = None
         if(asyncio.iscoroutinefunction(_request_handler)):
-            err = await _request_handler(inputFile, outputFile)
+            err = await _request_handler(str(inputFile), str(outputFile))
         else:
-            err = _request_handler(_normalize_path_string(
-                inputFile), _normalize_path_string(outputFile))
+            err = _request_handler(str(_normalize_path_string(
+                inputFile)), str(_normalize_path_string(outputFile)))
 
         if (not err is None and err):
             _print_debug_message(f"Request Error: {err}")
