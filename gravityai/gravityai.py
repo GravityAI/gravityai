@@ -7,7 +7,6 @@ import argparse
 import asyncio
 import websockets
 from datetime import datetime
-from . import pipelineOrchestration
 
 warnings.filterwarnings("ignore")
 
@@ -405,7 +404,3 @@ def wait_for_requests(handler):
             sys.exit(2)
 
 
-def test_pipeline(container_list, keys_list, metadata_dicts, input_file):
-    pipeline = pipelineOrchestration.GravityAIPipeline(container_list, keys_list, metadata_dicts)
-    result = pipeline.run(input_file)
-    return result
