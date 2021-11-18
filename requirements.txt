@@ -2,3 +2,4 @@ pathlib~=1.0.1
 websockets~=9.1
 asyncio~=3.4.3
 fpdf~=1.7.2
+requests

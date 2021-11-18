@@ -1,8 +1,8 @@
 import requests
 import os
 import json
-from fileSaver import mappings
-import fileSaver
+from .fileSaver import mappings
+from . import fileSaver
 
 class GravityAIPipeline:
     def __init__(self, containers_list, keys_list, container_metadata_dicts):
@@ -23,6 +23,9 @@ class GravityAIPipeline:
             containerRunner.postKey()
             
             result = containerRunner.run(currentFile)
+
+            if i == len(self.containers_list) - 1:
+                break
             
             outputFileType = self.container_metadata_dicts[i]["outputFileType"]
             saverClass_ = getattr(fileSaver, mappings[outputFileType])
@@ -38,11 +41,10 @@ class GravityAIPipeline:
 
 
 class GravityAIContainerRunner:
-    def __init__(self, name, key, metadata, outputFileSaveMethod):
+    def __init__(self, name, key, metadata):
         self.name = name
         self.key = key
         self.metadata = metadata
-        self.outputFileSaveMethod = outputFileSaveMethod
         self.openMethods = {"txt": "r", "pdf": "rb", "json": "r"}
     
     def postKey(self):
