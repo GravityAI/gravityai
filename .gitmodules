@@ -1,3 +1,3 @@
 [submodule "gravityai/explainability-interface"]
-	path = gravityai/explainability-interface
-	url = https://github.com/GravityAI/explainability-interface.git
+	path = gravityai/explainability_interface
+	url = https://github.com/GravityAI/explainability_interface.git

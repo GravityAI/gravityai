@@ -5,10 +5,9 @@ import json
 from pathlib import Path
 import argparse
 import asyncio
-import explainability_interface
 import websockets
 from datetime import datetime
-from explainability_interface import explainer
+from .explainability_interface import explainer
 import shap
 import pandas as pd
 import wget
@@ -436,8 +435,8 @@ def handle_csvs_with_uris(filePath, outPath, handle_fnc, **kwargs):
         '''
         Helper function to handle the download and inference of the model for concat mode
         '''
-        uri = row["uri"]
-        filename = wget.download(uri)
+        # uri = row["uri"]
+        # filename = wget.download(uri)
         output_temp = handle_fnc(filename, **kwargs)
         os.remove(filename)
         return output_temp
@@ -447,7 +446,7 @@ def handle_csvs_with_uris(filePath, outPath, handle_fnc, **kwargs):
     for i, row in df.iterrows():
         uri = row["uri"]
         filename = wget.download(uri)
-        output_temp = handle_concat(filename, **kwargs)
+        output_temp = handle_fnc(filename, **kwargs)
         output_temp.to_excel(writer, sheet_name=f"Sheet_{i}")
         os.remove(filename)
     writer.save()
