@@ -5,8 +5,12 @@ import json
 from pathlib import Path
 import argparse
 import asyncio
+import explainability_interface
 import websockets
 from datetime import datetime
+from explainability_interface import explainer
+import shap
+
 
 warnings.filterwarnings("ignore")
 
@@ -402,3 +406,15 @@ def wait_for_requests(handler):
         if (not isOk):
             sys.stderr.write(error)
             sys.exit(2)
+
+def interpret_model(model, data, outPath, output_labels=None, feature_labels=None):
+    '''
+    This function uses the classes in explainability_interface to return a bar plot through the SHAP library. To see descriptions for
+    output_labels and feature_labels, refer to the README in explainability_interface. Note that this function must be called within 
+    your request handler function, as this is not setup to be asynchronous. The intent behind this is to augment the output of your model with
+    explainability. Output is returned as a json (see the example notebook in explainability_interface). If your script outputs
+    to anything other than a json, you will need to modify this json to work with your output type.
+    '''
+    shapExplainer = explainer.SHAPExplainer(model, data, model_type="general")
+    explanationObject = shapExplainer.getExplanationObject()
+    return shapExplainer.getBarPlotJson(explanationObject, output_labels=output_labels, feature_labels=feature_labels)
