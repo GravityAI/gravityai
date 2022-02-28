@@ -10,7 +10,9 @@ import websockets
 from datetime import datetime
 from explainability_interface import explainer
 import shap
-
+import pandas as pd
+import wget
+import shutil
 
 warnings.filterwarnings("ignore")
 
@@ -418,3 +420,45 @@ def interpret_model(model, data, outPath, output_labels=None, feature_labels=Non
     shapExplainer = explainer.SHAPExplainer(model, data, model_type="general")
     explanationObject = shapExplainer.getExplanationObject()
     return shapExplainer.getBarPlotJson(explanationObject, output_labels=output_labels, feature_labels=feature_labels)
+
+def handle_csvs_with_uris(filePath, outPath, handle_fnc, action_type, **kwargs):
+    '''
+    Function to handle multiple files. Pass in a filePath (csv) containing a column called "uri". This function will apply the wrapped function to each uri.
+    Kwargs are passed to the handle_fnc, so design that function to work accordingly:
+    
+    def handle_fnc(model_filename, **kwargs):
+        Do stuff here
+
+    Action_type expects a string from ['excel','concat']. 'excel' will combine the output of handle_fnc for each file into a multi tabbed excel file (assumes the output is
+    a pandas df). 'concat' will add an extra column to the supplied filePath csv: "result", containing the output of handle_fnc (assuming it's a string).
+    '''
+    df = pd.read_csv(filePath)
+    def handle_concat(row):
+        '''
+        Helper function to handle the download and inference of the model for concat mode
+        '''
+        uri = row["uri"]
+        filename = wget.download(uri)
+        output_temp = handle_fnc(filename, **kwargs)
+        os.remove(filename)
+        return output_temp
+
+    if action_type == "excel":
+        #handle excel stuff
+        writer = pd.ExcelWriter("temp_out.xlsx")
+        for i, row in df.iterrows():
+            uri = row["uri"]
+            filename = wget.download(uri)
+            output_temp = handle_fnc(filename, **kwargs)
+            output_temp.to_excel(writer, sheet_name=f"Sheet_{i}")
+            os.remove(filename)
+        writer.save()
+        shutil.copyfile("temp_out.xlsx", outPath)
+        os.remove("temp_out.xlsx")
+    elif action_type == "concat":
+        #handle inference step
+        df["result"] = df.apply(handle_concat, axis=1)
+        df.to_csv(outPath, index=False)
+
+
+
