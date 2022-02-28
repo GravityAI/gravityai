@@ -15,7 +15,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/GravityAI/gravityai",
-    packages=setuptools.find_packages(),
+    packages=setuptools.find_packages(where="./explainability_interface"),
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
