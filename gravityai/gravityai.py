@@ -425,28 +425,18 @@ def handle_csvs_with_uris(filePath, outPath, handle_fnc, **kwargs):
     Function to handle multiple files. Pass in a filePath (csv) containing a column called "uri". This function will apply the wrapped function to each uri.
     Kwargs are passed to the handle_fnc, so design that function to work accordingly:
     
-    def handle_fnc(filename, **kwargs):
+    def handle_fnc(filename, row, **kwargs):
         Do stuff here
 
     This function will combine the output of handle_fnc for each file into a multi tabbed excel file (assumes the output is a pandas df). 
     '''
     df = pd.read_csv(filePath)
-    def handle_concat(row):
-        '''
-        Helper function to handle the download and inference of the model for concat mode
-        '''
-        # uri = row["uri"]
-        # filename = wget.download(uri)
-        output_temp = handle_fnc(filename, **kwargs)
-        os.remove(filename)
-        return output_temp
-
     
     writer = pd.ExcelWriter("temp_out.xlsx")
     for i, row in df.iterrows():
         uri = row["uri"]
         filename = wget.download(uri)
-        output_temp = handle_fnc(filename, **kwargs)
+        output_temp = handle_fnc(filename, row, **kwargs)
         output_temp.to_excel(writer, sheet_name=f"Sheet_{i}")
         os.remove(filename)
     writer.save()

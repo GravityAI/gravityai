@@ -51,8 +51,8 @@ def process_data(dataPath, outPath):
     #TODO:
     # Read data in from dataPath (csv containing column "uri")
     # Define a custom handling function to process the input file, with whatever arguments are necessary:
-    def handle_fnc(filePath, **kwargs):
-        # read file from filePath
+    def handle_fnc(filePath, row, **kwargs):
+        # read file from filePath, read whatever data is necessary from the Pandas df row.
         # perform processing
         # return pandas df after processing
     grav.handle_csvs_with_uris(dataPath, outPath, handle_fnc, **kwargs)
