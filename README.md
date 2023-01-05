@@ -37,6 +37,7 @@ def process_data(dataPath, outPath):
 grav.wait_for_requests(process_data)
 
 ```
+
 ## Running Multiple Files
 
 This section explains how to use multiple files. You will require a csv with the column "uri", where each row is a uri where an input file is stored:
@@ -49,8 +50,11 @@ In continuation of the section above, define a callback function:
 
 def process_data(dataPath, outPath):
     #TODO:
-    # Read data in from dataPath (csv containing column "uri")
-    # Define a custom handling function to process the input file, with whatever arguments are necessary:
+    # 1) Read data in from dataPath (csv containing column "uri")
+    # NOTE: dataPath will likely end with a non-standard file extension (like .dat), so make sure your code can handle
+    # a filename with an extension different than expected. You may need to rename the input file to .zip. .csv, etc for it to load
+    # properly in your code.
+    # 2) Define a custom handling function to process the input file, with whatever arguments are necessary:
     def handle_fnc(filePath, row, **kwargs):
         # read file from filePath, read whatever data is necessary from the Pandas df row.
         # perform processing

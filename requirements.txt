@@ -1,5 +1,5 @@
 pathlib~=1.0.1
-websockets~=9.1
+websockets~=10.4
 asyncio~=3.4.3
 pandas
 shap
